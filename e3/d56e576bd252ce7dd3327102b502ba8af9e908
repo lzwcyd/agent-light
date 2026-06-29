@@ -1,0 +1,24 @@
+install.sh
+  s_0220011ae21d49::t_db64e862bd6386 1-89
+README.md
+  s_0220011ae21d49::t_0cc33e28d540b3 27-43,47
+  s_0220011ae21d49::t_0e35f65989aaca 3
+.github/workflows/release.yml
+  s_0220011ae21d49::t_c82fd0f432d908 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e3d56e576bd252ce7dd3327102b502ba8af9e908",
+  "prompts": {},
+  "sessions": {
+    "s_0220011ae21d49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bd52f42-5188-487e-9502-abb38ae6e8f7",
+        "model": "x2/claude-opus-4-8"
+      },
+      "human_author": "lzwcyd <lzwcyd@users.noreply.github.com>"
+    }
+  }
+}
