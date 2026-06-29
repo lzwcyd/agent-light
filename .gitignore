@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.DS_Store
+*.log
+.env
+.env.*
+.python-version
+.idea/
+.vscode/
+*.pid
+agent-light.pid
