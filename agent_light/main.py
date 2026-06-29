@@ -20,6 +20,7 @@ from AppKit import (
 from Foundation import NSObject
 
 from .detector import analyze_states, scan_instances
+from .models import LightState
 from .tool_paths import get_resolved_tool_paths
 from .constants import APP_DATA_DIR, APP_LOGGER_NAME
 from .logging_config import is_quiet_mode, setup_logging
@@ -31,7 +32,14 @@ from .shutdown import (
     remove_pid,
     write_pid,
 )
-from .settings import get_display_mode, get_hooks_reminder_dismissed, set_display_mode, set_hooks_reminder_dismissed
+from .settings import (
+    get_display_mode,
+    get_hide_idle,
+    get_hooks_reminder_dismissed,
+    set_display_mode,
+    set_hide_idle,
+    set_hooks_reminder_dismissed,
+)
 from .styles import get_style, list_complete_styles, reload_styles
 from .ui.style_manager_window import show_style_manager
 from .ui.traffic_light_panel import TrafficLightPanel
@@ -103,6 +111,12 @@ class AppDelegate(NSObject):
             item.setState_(1 if mode == f"custom:{style.id}" else 0)
             menu.addItem_(item)
             self._style_menu_items.append(item)
+
+        menu.addItem_(NSMenuItem.separatorItem())
+        hide_idle = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("仅显示活动", "toggleHideIdle:", "")
+        hide_idle.setTarget_(self)
+        hide_idle.setState_(1 if get_hide_idle() else 0)
+        menu.addItem_(hide_idle)
 
         menu.addItem_(NSMenuItem.separatorItem())
         invent = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("我爱发明", "openStyleManager:", "")
@@ -340,6 +354,11 @@ class AppDelegate(NSObject):
         if style_id:
             self._apply_display_mode(f"custom:{style_id}")
 
+    def toggleHideIdle_(self, sender) -> None:
+        set_hide_idle(not get_hide_idle())
+        self._rebuild_menu()   # 刷新勾选态
+        self.tick_(None)       # 立即按新设置重渲染面板
+
     def openStyleManager_(self, sender) -> None:
         show_style_manager(on_change=self._on_styles_changed)
 
@@ -401,6 +420,8 @@ class AppDelegate(NSObject):
             instances = scan_instances()
             logger.debug("Scanned %d instance(s)", len(instances))
             instances = analyze_states(instances)
+            if get_hide_idle():
+                instances = [i for i in instances if i.state != LightState.IDLE]
             self._panel_manager.update(instances)
         except Exception:
             logger.exception("Poll tick failed")

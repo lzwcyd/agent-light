@@ -18,11 +18,12 @@ SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 _display_mode = "traffic"
 _tool_paths: dict[str, str] = {}
 _hooks_reminder_dismissed = False
+_hide_idle = False
 _loaded = False
 
 
 def _load() -> None:
-    global _display_mode, _tool_paths, _hooks_reminder_dismissed, _loaded
+    global _display_mode, _tool_paths, _hooks_reminder_dismissed, _hide_idle, _loaded
     if _loaded:
         return
     try:
@@ -43,6 +44,8 @@ def _load() -> None:
                 }
             if "hooks_reminder_dismissed" in data:
                 _hooks_reminder_dismissed = bool(data["hooks_reminder_dismissed"])
+            if "hide_idle" in data:
+                _hide_idle = bool(data["hide_idle"])
     except (OSError, json.JSONDecodeError) as exc:
         logger.debug("Failed to load settings: %s", exc)
     _loaded = True
@@ -53,6 +56,7 @@ def _save() -> None:
     payload: dict[str, Any] = {
         "display_mode": _display_mode,
         "hooks_reminder_dismissed": _hooks_reminder_dismissed,
+        "hide_idle": _hide_idle,
     }
     if _tool_paths:
         payload["tool_paths"] = dict(_tool_paths)
@@ -85,4 +89,16 @@ def set_hooks_reminder_dismissed(dismissed: bool) -> None:
     global _hooks_reminder_dismissed
     _load()
     _hooks_reminder_dismissed = dismissed
+    _save()
+
+
+def get_hide_idle() -> bool:
+    _load()
+    return _hide_idle
+
+
+def set_hide_idle(value: bool) -> None:
+    global _hide_idle
+    _load()
+    _hide_idle = value
     _save()
