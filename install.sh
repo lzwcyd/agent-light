@@ -44,7 +44,7 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-info "下载 $ASSET（$VERSION）"
+info "下载 ${ASSET}（${VERSION}）"
 curl --retry 5 --retry-delay 2 -fsSL "$URL" -o "$TMP/$ASSET" \
   || fail "下载失败，请确认版本 $VERSION 存在：https://github.com/$REPO/releases"
 
