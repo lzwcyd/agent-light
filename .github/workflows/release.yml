@@ -96,13 +96,14 @@ jobs:
         run: |
           python -m PyInstaller --clean --onefile \
             --name agent-light \
+            --paths . \
             --add-data "agent_light/assets:agent_light/assets" \
             --collect-submodules objc \
             --collect-submodules AppKit \
             --collect-submodules Foundation \
             --collect-submodules Quartz \
             --collect-submodules ApplicationServices \
-            agent_light/main.py
+            packaging/agent-light.py
           test -f dist/agent-light || { echo "✗ 二进制未生成"; exit 1; }
 
       - name: Verify architecture & smoke test
