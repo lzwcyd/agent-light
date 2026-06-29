@@ -83,6 +83,29 @@ class HookToolResult:
 
 def _wrapper_script(tool: str) -> str:
     data_home = f"$HOME/.{APP_SLUG}"
+    if getattr(sys, "frozen", False):
+        # 冻结的 .app：python.txt 存的是 .app 内可执行文件路径，本身即 relay 入口
+        # （以 AGENT_LIGHT_RELAY=1 启动）。不做系统 python 回退——用户机上无可
+        # import 的 agent_light 包。失效时回 '{}'，hook 必须返回合法 JSON。
+        # marker: agent_light.agent_hooks.relay
+        return f"""#!/bin/bash
+# Agent Light — relay {tool} hook events to traffic-light state signals (frozen .app).
+# marker: agent_light.agent_hooks.relay
+set -euo pipefail
+
+export AGENT_LIGHT_TOOL={tool}
+export AGENT_LIGHT_RELAY=1
+
+RELAY=""
+if [[ -f "{data_home}/agent-hooks/python.txt" ]]; then
+  RELAY="$(tr -d '\\n' < "{data_home}/agent-hooks/python.txt")"
+fi
+if [[ -z "$RELAY" || ! -x "$RELAY" ]]; then
+  echo '{{}}' >&1
+  exit 0
+fi
+exec "$RELAY"
+"""
     return f"""#!/bin/bash
 # Agent Light — relay {tool} hook events to traffic-light state signals.
 set -euo pipefail
@@ -332,6 +355,20 @@ def _script_is_valid(path: Path) -> bool:
     return "agent_light.agent_hooks.relay" in text and "AGENT_LIGHT_TOOL" in text
 
 
+def _script_matches_runtime(path: Path) -> bool:
+    """已装脚本是否与当前运行态匹配。
+
+    冻结 .app 生成的脚本含 ``AGENT_LIGHT_RELAY=1``，源码/venv 脚本则没有。
+    若不一致（如从 venv 切到 .app），脚本里的 python.txt 指向已失效，需重装。
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    script_is_frozen = "AGENT_LIGHT_RELAY=1" in text
+    return script_is_frozen == bool(getattr(sys, "frozen", False))
+
+
 def _cursor_hook_command_registered(config: dict, command: str) -> bool:
     hooks = config.get("hooks")
     if not isinstance(hooks, dict):
@@ -375,6 +412,8 @@ def _audit_tool_hooks(paths: HookToolPaths, tool_key: str) -> tuple[bool, list[s
             issues.append("脚本不可执行或内容异常")
         else:
             issues.append("缺少 Hook 脚本")
+    elif not _script_matches_runtime(paths.script_path):
+        issues.append("脚本与当前运行环境不匹配（需重新安装以更新解释器路径）")
 
     config = _load_json(paths.config_file)
     if tool_key == TOOL_CURSOR:

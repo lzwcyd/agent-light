@@ -429,6 +429,16 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    import os
+
+    # 冻结的 .app 同时充当 Agent Hook relay：hook 脚本以 AGENT_LIGHT_RELAY=1
+    # 调用本可执行文件，读 stdin 处理一次事件后退出，绝不初始化 GUI。
+    # 必须早于 parse_args()——上游工具可能向 argv 注入自己的参数。
+    if os.environ.get("AGENT_LIGHT_RELAY") == "1":
+        from .agent_hooks.relay import run_relay
+
+        raise SystemExit(run_relay())
+
     args = parse_args()
     quiet = not args.verbose if not args.quiet else True
     setup_logging(quiet=quiet)

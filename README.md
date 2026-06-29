@@ -21,27 +21,43 @@ macOS 菜单栏 + 悬浮面板，实时监控 **Cursor**、**Claude Code**、**C
 | 项目 | 要求 |
 |------|------|
 | 系统 | macOS 12.0+ |
-| Python | 3.9+（系统自带或 [Homebrew](https://brew.sh) 均可） |
 | 权限 | **辅助功能 (Accessibility)** — 必须授予 |
+| Python | 3.9+ — **仅「源码方式」需要**；下载 DMG 安装则无需 Python |
 
-### 一键安装（推荐）
+### 下载 DMG 安装（推荐，无需 Python）
 
-无需手动 clone，自动下载最新 Release 源码包并启动：
+DMG 内置了 Python 解释器与全部依赖，下载即用。
+
+1. 到 [最新 Release](https://github.com/lzwcyd/agent-light/releases/latest) 下载对应你 Mac 芯片的安装包（终端执行 `uname -m` 可查看架构）：
+
+   | Mac 芯片 | `uname -m` | 下载文件 |
+   |----------|-----------|----------|
+   | Apple Silicon（M1/M2/M3…） | `arm64` | `AgentLight-<版本>-arm64.dmg` |
+   | Intel | `x86_64` | `AgentLight-<版本>-x86_64.dmg` |
+
+2. 打开 DMG，把 **Agent Light** 拖入「应用程序」。
+3. 首次打开：在「应用程序」里**右键 Agent Light →「打开」**，在弹窗里再点「打开」。
+
+> **为什么要右键打开**：应用未做 Apple 代码签名，直接双击会被 Gatekeeper 拦截。右键打开一次后即可正常使用；或在终端执行：
+> ```bash
+> xattr -dr com.apple.quarantine "/Applications/Agent Light.app"
+> ```
+
+启动后菜单栏出现监控图标、屏幕上方出现悬浮面板。**安装 Agent Hooks 直接用菜单栏 →「安装 Hook」**（无需命令行）。
+
+### 源码方式（开发者 / 想从源码运行）
+
+需要本机 Python 3.9+。两种方式任选其一。
+
+**A. 一键脚本**（下载最新源码包并启动）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lzwcyd/agent-light/master/install.sh | bash
 ```
 
-脚本会：
+脚本会下载源码归档到 `~/.agent-light/app/`、解压并执行 `run.sh`（创建 `.venv`、装依赖、后台启动）。指定版本：`AGENT_LIGHT_VERSION=v1.0.0 curl -fsSL .../install.sh | bash`。
 
-1. 从 [最新 Release](https://github.com/lzwcyd/agent-light/releases/latest) 下载源码归档（`tar.gz`）
-2. 解压到 `~/.agent-light/app/agent-light-<版本>/`
-3. 自动执行 `run.sh`（创建 `.venv`、安装依赖、后台启动）
-
-> 安装后仍需授予 **辅助功能权限**（见下文）。如需指定版本：
-> `AGENT_LIGHT_VERSION=v1.0.0 curl -fsSL .../install.sh | bash`
-
-### 克隆并运行
+**B. 克隆运行**：
 
 ```bash
 git clone https://github.com/lzwcyd/agent-light.git
@@ -51,17 +67,11 @@ chmod +x run.sh
 ./run.sh
 ```
 
-首次运行会自动：
-
-1. 检测本机 Python 3.9+
-2. 创建 `.venv` 并 `pip install -e .`
-3. 后台静默启动（默认不写日志）
-
-看到 `✓ Agent Light 已启动` 后，菜单栏会出现监控图标，屏幕上方出现悬浮面板。
+首次运行会检测本机 Python 3.9+、创建 `.venv` 并 `pip install -e .`、后台静默启动。
 
 > **不要提交或复制 `.venv`**：虚拟环境与创建它的 Python 绑定，换电脑后删除重建即可：`rm -rf .venv && ./run.sh`
 
-### 手动安装（可选）
+源码方式也可手动安装：
 
 ```bash
 python3 -m venv .venv
@@ -75,9 +85,12 @@ agent-light --verbose    # 启用日志
 
 每台 Mac **只需配置一次**：
 
-**系统设置 → 隐私与安全性 → 辅助功能** → 添加你用来运行本工具的终端（Terminal / iTerm / Warp 等）并打开开关。
+**系统设置 → 隐私与安全性 → 辅助功能** → 添加要授权的对象并打开开关：
 
-`./run.sh` 启动时会自动检测；若缺失会尝试打开系统设置页面。
+- **DMG 安装**：添加 **Agent Light** 本身。
+- **源码方式**：添加你用来运行的终端（Terminal / iTerm / Warp 等）。
+
+DMG 应用启动、`./run.sh` 启动时都会自动检测；若缺失会尝试打开系统设置页面。
 
 ---
 
@@ -248,6 +261,15 @@ Agent Light 会单独显示 **Claude Desktop** 卡片（与 **Claude Code · 终
 ```
 
 ### 卸载
+
+**DMG 安装**：先在菜单栏 →「删除 Hook」（移除 AI 工具里的 Hook 配置），退出应用后：
+
+```bash
+rm -rf "/Applications/Agent Light.app"
+rm -rf ~/.agent-light   # 可选：删除配置与自定义风格
+```
+
+**源码方式**：
 
 ```bash
 ./run.sh stop
