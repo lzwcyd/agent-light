@@ -1,6 +1,6 @@
 # Agent Light
 
-**仓库地址**：[https://github.com/JiayuK/agent-light](https://github.com/JiayuK/agent-light)
+**仓库地址**：[https://github.com/lzwcyd/agent-light](https://github.com/lzwcyd/agent-light)（Fork 自 [JiayuK/agent-light](https://github.com/JiayuK/agent-light)）
 
 macOS 菜单栏 + 悬浮面板，实时监控 **Cursor**、**Claude Code**、**Codex**，以及 **Claude Desktop 编程模式** 的运行状态。
 
@@ -24,10 +24,27 @@ macOS 菜单栏 + 悬浮面板，实时监控 **Cursor**、**Claude Code**、**C
 | Python | 3.9+（系统自带或 [Homebrew](https://brew.sh) 均可） |
 | 权限 | **辅助功能 (Accessibility)** — 必须授予 |
 
+### 一键安装（推荐）
+
+无需手动 clone，自动下载最新 Release 源码包并启动：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lzwcyd/agent-light/master/install.sh | bash
+```
+
+脚本会：
+
+1. 从 [最新 Release](https://github.com/lzwcyd/agent-light/releases/latest) 下载源码归档（`tar.gz`）
+2. 解压到 `~/.agent-light/app/agent-light-<版本>/`
+3. 自动执行 `run.sh`（创建 `.venv`、安装依赖、后台启动）
+
+> 安装后仍需授予 **辅助功能权限**（见下文）。如需指定版本：
+> `AGENT_LIGHT_VERSION=v1.0.0 curl -fsSL .../install.sh | bash`
+
 ### 克隆并运行
 
 ```bash
-git clone https://github.com/JiayuK/agent-light.git
+git clone https://github.com/lzwcyd/agent-light.git
 cd agent-light
 
 chmod +x run.sh
