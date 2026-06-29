@@ -64,17 +64,17 @@ jobs:
           name: source-archives
           path: dist/*
 
-  # ── macOS .app → .dmg（双架构原生构建）─────────────
+  # ── macOS 单文件可执行（双架构原生构建）──────────────
   build-macos:
     needs: prepare
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14   # Apple Silicon
+          - runner: macos-14         # Apple Silicon
             arch: arm64
-          - runner: macos-13   # Intel
-            arch: x86_64
+          - runner: macos-15-intel   # Intel
+            arch: x64
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -91,47 +91,44 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install . pyinstaller
-          brew install create-dmg
 
-      - name: Build .app
-        env:
-          AGENT_LIGHT_VERSION: ${{ needs.prepare.outputs.version }}
+      - name: Build executable
         run: |
-          pyinstaller --noconfirm agent-light.spec
-          test -d "dist/Agent Light.app" || { echo "✗ .app 未生成"; exit 1; }
+          python -m PyInstaller --clean --onefile \
+            --name agent-light \
+            --add-data "agent_light/assets:agent_light/assets" \
+            --collect-submodules objc \
+            --collect-submodules AppKit \
+            --collect-submodules Foundation \
+            --collect-submodules Quartz \
+            --collect-submodules ApplicationServices \
+            agent_light/main.py
+          test -f dist/agent-light || { echo "✗ 二进制未生成"; exit 1; }
 
-      - name: Verify architecture
+      - name: Verify architecture & smoke test
         run: |
-          BIN="dist/Agent Light.app/Contents/MacOS/agent-light"
-          lipo -archs "$BIN" || file "$BIN"
+          lipo -archs dist/agent-light || file dist/agent-light
+          # relay 分流：不弹 GUI、读 stdin、输出 {} 后退出
+          echo '{"hook_event_name":"Stop"}' | AGENT_LIGHT_RELAY=1 AGENT_LIGHT_TOOL=cursor dist/agent-light
 
-      - name: Create DMG
+      - name: Package asset
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
-          ARCH="${{ matrix.arch }}"
-          DMG="dist/AgentLight-${VERSION}-${ARCH}.dmg"
-          # create-dmg 带拖拽到 Applications 的安装 UI；失败回退 hdiutil
-          create-dmg \
-            --volname "Agent Light" \
-            --window-size 540 380 \
-            --icon "Agent Light.app" 140 190 \
-            --app-drop-link 400 190 \
-            --no-internet-enable \
-            "$DMG" "dist/Agent Light.app" \
-          || hdiutil create -volname "Agent Light" \
-               -srcfolder "dist/Agent Light.app" \
-               -ov -format UDZO "$DMG"
-          ( cd dist && shasum -a 256 "AgentLight-${VERSION}-${ARCH}.dmg" \
-              > "AgentLight-${VERSION}-${ARCH}.dmg.sha256.txt" )
-          ls -lh dist/*.dmg*
+          ASSET="agent-light-macos-${{ matrix.arch }}.tar.gz"
+          mkdir -p package
+          cp dist/agent-light package/
+          chmod +x package/agent-light
+          tar -C package -czf "$ASSET" agent-light
+          shasum -a 256 "$ASSET" > "$ASSET.sha256.txt"
+          ls -lh "$ASSET"*
 
-      - name: Upload DMG artifact
+      - name: Upload executable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dmg-${{ matrix.arch }}
+          name: macos-${{ matrix.arch }}
           path: |
-            dist/*.dmg
-            dist/*.dmg.sha256.txt
+            agent-light-macos-${{ matrix.arch }}.tar.gz
+            agent-light-macos-${{ matrix.arch }}.tar.gz.sha256.txt
 
   # ── 汇总所有产物，创建 / 更新 Release ──────────────
   release:
@@ -158,19 +155,21 @@ jobs:
           body: |
             ## 安装
 
-            **无需本机 Python**，下载对应架构的 DMG，拖入「应用程序」即可：
+            **无需本机 Python**，下载对应架构的包，解压得到 `agent-light` 可执行文件：
 
-            | Mac 芯片 | 下载 |
-            |----------|------|
-            | Apple Silicon（M1/M2/M3…，`uname -m` = `arm64`） | `AgentLight-${{ needs.prepare.outputs.version }}-arm64.dmg` |
-            | Intel（`uname -m` = `x86_64`） | `AgentLight-${{ needs.prepare.outputs.version }}-x86_64.dmg` |
+            | Mac 芯片 | `uname -m` | 下载 |
+            |----------|-----------|------|
+            | Apple Silicon（M1/M2/M3…） | `arm64` | `agent-light-macos-arm64.tar.gz` |
+            | Intel | `x86_64` | `agent-light-macos-x64.tar.gz` |
 
-            > 应用未签名，首次打开请**右键 →「打开」**，或执行：
-            > `xattr -dr com.apple.quarantine "/Applications/Agent Light.app"`
+            ```bash
+            tar -xzf agent-light-macos-*.tar.gz
+            xattr -dr com.apple.quarantine ./agent-light   # 未签名，放行 Gatekeeper
+            ./agent-light                                   # 启动菜单栏应用
+            ```
 
-            源码包（`agent-light-*.tar.gz` / `.zip`）面向从源码运行的用户。
+            源码包（`agent-light-*.tar.gz` 形如 `agent-light-<版本>.tar.gz` / `.zip`）面向从源码运行的用户。
           files: |
-            dist/*.dmg
             dist/*.tar.gz
             dist/*.zip
             dist/*.sha256.txt
